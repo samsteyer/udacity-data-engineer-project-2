@@ -9,7 +9,7 @@ config.read('dwh.cfg')
 
 staging_events_table_drop = "DROP TABLE IF EXISTS staging_events"
 staging_songs_table_drop = "DROP TABLE IF EXISTS staging_songs"
-songplay_table_drop = "DROP TABLE IF EXISTS sonplays"
+songplay_table_drop = "DROP TABLE IF EXISTS songplays"
 user_table_drop = "DROP TABLE IF EXISTS users"
 song_table_drop = "DROP TABLE IF EXISTS songs"
 artist_table_drop = "DROP TABLE IF EXISTS artists"
@@ -44,7 +44,7 @@ staging_events_table_create= ("""
 staging_songs_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         staging_songs (
-            num_songs int,
+            num_songs integer,
             artist_id text,
             artist_latitude decimal,
             artist_longitude decimal,
@@ -64,7 +64,7 @@ songplay_table_create = ("""
             start_time timestamp sortkey distkey,
             user_id integer,
             level text,
-            song_id integer,
+            song_id text,
             artist_id text,
             session_id text,
             location text,
@@ -125,13 +125,15 @@ time_table_create = ("""
 staging_events_copy = ("""
     COPY staging_events FROM {}
     CREDENTIALS 'aws_iam_role={}'
-    GZIP REGION 'us-west-2'
-""").format(config['S3']['LOG_DATA'], config['IAM_ROLE']['ARN'])
+    REGION 'us-west-2'
+    JSON {}
+""").format(config['S3']['LOG_DATA'], config['IAM_ROLE']['ARN'], config['S3']['LOG_JSONPATH'])
 
 staging_songs_copy = ("""
     COPY staging_songs FROM {}
     CREDENTIALS 'aws_iam_role={}'
-    GZIP REGION 'us-west-2'
+    REGION 'us-west-2'
+    JSON 'auto'
 """).format(config['S3']['SONG_DATA'], config['IAM_ROLE']['ARN'])
 
 # FINAL TABLES
@@ -195,8 +197,10 @@ song_table_insert = ("""
         artist_id,
         year,
         duration
+    FROM
+        staging_songs
     WHERE
-        song_is IS NOT NULL
+        song_id IS NOT NULL
 """)
 
 artist_table_insert = ("""
@@ -207,7 +211,9 @@ artist_table_insert = ("""
         artist_name,
         artist_location,
         artist_latitude,
-        artist_longitudel
+        artist_longitude
+    FROM
+        staging_songs
     WHERE
         artist_id IS NOT NULL
 """)
@@ -222,7 +228,7 @@ time_table_insert = ("""
         EXTRACT(week FROM start_time),
         EXTRACT(month FROM start_time),
         EXTRACT(year FROM start_time),
-        EXTRACT(dayofweek FROM start_time),
+        EXTRACT(dayofweek FROM start_time)
     FROM
         songplays
 """)
