@@ -31,11 +31,11 @@ staging_events_table_create= ("""
             location text,
             method text,
             page text,
-            registration text,
-            sessionId text,
+            registration double precision,
+            sessionId integer,
             song text,
-            status text,
-            ts text,
+            status integer,
+            ts bigint,
             userAgent text,
             userId integer
         )
@@ -60,8 +60,8 @@ staging_songs_table_create = ("""
 songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         songplays (
-            songplay_id integer not null,
-            start_time timestamp,
+            songplay_id integer identity,
+            start_time timestamp sortkey distkey,
             user_id integer,
             level text,
             song_id integer,
@@ -81,6 +81,7 @@ user_table_create = ("""
             gender text,
             level text
         )
+        diststyle all
 """)
 
 song_table_create = ("""
@@ -103,12 +104,13 @@ artist_table_create = ("""
             latitude integer,
             longitude integer
         )
+        diststyle all
 """)
 
 time_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         time (
-            start_time timestamp not null,
+            start_time timestamp not null sortkey distkey,
             hour integer,
             day integer,
             week integer,
@@ -123,30 +125,106 @@ time_table_create = ("""
 staging_events_copy = ("""
     COPY staging_events FROM {}
     CREDENTIALS 'aws_iam_role={}'
-    GZIP REGION 'us-west-1'
+    GZIP REGION 'us-west-2'
 """).format(config['S3']['LOG_DATA'], config['IAM_ROLE']['ARN'])
 
 staging_songs_copy = ("""
     COPY staging_songs FROM {}
     CREDENTIALS 'aws_iam_role={}'
-    GZIP REGION 'us-west-1'
+    GZIP REGION 'us-west-2'
 """).format(config['S3']['SONG_DATA'], config['IAM_ROLE']['ARN'])
 
 # FINAL TABLES
 
 songplay_table_insert = ("""
+    INSERT INTO
+        songplays (
+            start_time,
+            user_id,
+            level,
+            song_id,
+            artist_id,
+            session_id,
+            location,
+            user_agent
+        )
+    SELECT
+        timestamp 'epoch' + e.ts * interval '1 second',
+        e.userId,
+        e.level,
+        s.song_id,
+        s.artist_id,
+        e.sessionId,
+        e.location,
+        e.userAgent
+    FROM
+        staging_events e
+    JOIN
+        staging_songs s
+    ON
+        e.song = s.title
+    AND
+        e.artist = s.artist_name
+    AND
+        e.length = s.duration
+    WHERE
+        e.page = 'NextSong'
 """)
 
 user_table_insert = ("""
+    INSERT INTO
+        users (user_id, first_name, last_name, gender, level)
+    SELECT DISTINCT
+            userId,
+            firstName,
+            lastName,
+            gender,
+            level
+    FROM
+        staging_events
+    WHERE
+        page = 'NextSong'
 """)
 
 song_table_insert = ("""
+    INSERT INTO
+        songs (song_id, title, artist_id, year, duration)
+    SELECT DISTINCT
+        song_id,
+        title,
+        artist_id,
+        year,
+        duration
+    WHERE
+        song_is IS NOT NULL
 """)
 
 artist_table_insert = ("""
+    INSERT INTO
+        artists (artist_id, name, location, latitude, longitude)
+    SELECT DISTINCT
+        artist_id,
+        artist_name,
+        artist_location,
+        artist_latitude,
+        artist_longitudel
+    WHERE
+        artist_id IS NOT NULL
 """)
 
 time_table_insert = ("""
+    INSERT INTO
+        time (start_time, hour, day, week, month, year, weekday)
+    SELECT DISTINCT
+        start_time,
+        EXTRACT(hour FROM start_time),
+        EXTRACT(day FROM start_time),
+        EXTRACT(week FROM start_time),
+        EXTRACT(month FROM start_time),
+        EXTRACT(year FROM start_time),
+        EXTRACT(dayofweek FROM start_time),
+    FROM
+        songplays
 """)
 
 # QUERY LISTS
