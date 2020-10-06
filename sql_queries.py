@@ -123,17 +123,30 @@ time_table_create = ("""
 # STAGING TABLES
 
 staging_events_copy = ("""
-    COPY staging_events FROM {}
-    CREDENTIALS 'aws_iam_role={}'
-    REGION 'us-west-2'
-    JSON {}
+    COPY
+        staging_events
+    FROM
+        {}
+    CREDENTIALS
+        'aws_iam_role={}'
+    REGION
+        'us-west-2'
+    JSON
+        {}
 """).format(config['S3']['LOG_DATA'], config['IAM_ROLE']['ARN'], config['S3']['LOG_JSONPATH'])
 
 staging_songs_copy = ("""
-    COPY staging_songs FROM {}
-    CREDENTIALS 'aws_iam_role={}'
-    REGION 'us-west-2'
-    JSON 'auto'
+    COPY
+        staging_songs
+    FROM
+        {}
+    CREDENTIALS
+        'aws_iam_role={}'
+    REGION
+        'us-west-2'
+    JSON
+        'auto'
+    TRUNCATECOLUMNS
 """).format(config['S3']['SONG_DATA'], config['IAM_ROLE']['ARN'])
 
 # FINAL TABLES
