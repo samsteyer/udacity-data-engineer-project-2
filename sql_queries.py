@@ -60,9 +60,9 @@ staging_songs_table_create = ("""
 songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         songplays (
-            songplay_id integer identity,
-            start_time timestamp sortkey distkey,
-            user_id integer,
+            songplay_id integer identity primary key,
+            start_time timestamp sortkey distkey not null,
+            user_id integer not null,
             level text,
             song_id text,
             artist_id text,
@@ -75,7 +75,7 @@ songplay_table_create = ("""
 user_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         users (
-            user_id integer not null,
+            user_id integer primary key,
             first_name text,
             last_name text,
             gender text,
@@ -87,7 +87,7 @@ user_table_create = ("""
 song_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         songs (
-            song_id text not null,
+            song_id text primary key,
             title text,
             artist_id text,
             year integer,
@@ -98,7 +98,7 @@ song_table_create = ("""
 artist_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         artists (
-            artist_id text not null,
+            artist_id text primary key,
             name text,
             location text,
             latitude integer,
@@ -110,7 +110,7 @@ artist_table_create = ("""
 time_table_create = ("""
     CREATE TABLE IF NOT EXISTS
         time (
-            start_time timestamp not null sortkey distkey,
+            start_time timestamp sortkey distkey primary key,
             hour integer,
             day integer,
             week integer,
